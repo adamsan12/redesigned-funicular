@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html style="background:#000">
+<head>
+    <meta charset="utf-8">
+    <title>StreamX</title>
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        body,html{height:100%;background:#000;color:#fff;font-family:Arial,Helvetica,sans-serif}
+        #container{position:relative;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center}
+        video{width:100%;height:100%;object-fit:contain;background:#000}
+        
+        .loading-screen{position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;font-size:24px;z-index:9999}
+        #loading-icon{position:relative;width:80px;height:20px;border-radius:20px;overflow:hidden;border:2px solid #fff}
+        #loading-bars{height:100%;width:240px;display:flex;animation:scroll 2s linear infinite}
+        .loading-box{margin:0!important;padding:0;width:40px;height:20px}
+        
+        @keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-120px)}}
+
+        #ctrlBtn{
+            position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+            width:90px;height:90px;background:transparent;border:none;cursor:pointer;
+            z-index:25;opacity:0;pointer-events:none;transition:opacity .3s;
+        }
+        #ctrlBtn.show{opacity:1;pointer-events:auto}
+
+        #bottomBar{
+            position:absolute;left:0;right:0;bottom:0;
+            background:linear-gradient(180deg,transparent,rgba(0,0,0,.6));
+            padding:12px 16px;z-index:20;
+            opacity:0;pointer-events:none;transition:opacity .3s;
+        }
+        #bottomBar.show{opacity:1;pointer-events:auto}
+
+        #progressBar{position:relative;height:4px;background:rgba(255,255,255,.3);border-radius:2px;cursor:pointer}
+        #progressFill{height:100%;background:#fff;width:0;border-radius:2px}
+        #progressThumb{
+            position:absolute;top:50%;transform:translate(-50%,-50%);
+            width:12px;height:12px;background:#fff;border-radius:50%;left:0
+        }
+        #timeDisp{font-size:14px;margin-top:4px}
+    </style>
+</head>
+<body>
+    <div id="container">
+        <video id="player" preload="auto" playsinline></video>
+
+        <button id="ctrlBtn" aria-label="Play/Pause">
+            <svg id="iconPlay" width="100%" height="100%" viewBox="0 0 512 512" fill="#fff">
+                <path d="M371.7 280l-176 101c-15.8 8.8-35.7-2.5-35.7-21V152c0-18.4 19.8-29.8 35.7-21l176 107c16.4 9.2 16.4 32.9 0 42z"/>
+            </svg>
+            <svg id="iconPause" width="100%" height="100%" viewBox="0 0 512 512" fill="#fff" style="display:none">
+                <path d="M200 184v152c0 13.3-10.7 24-24 24s-24-10.7-24-24V184c0-13.3 10.7-24 24-24s24 10.7 24 24zm128 0v152c0 13.3-10.7 24-24 24s-24-10.7-24-24V184c0-13.3 10.7-24 24-24s24 10.7 24 24z"/>
+            </svg>
+        </button>
+
+        <div id="bottomBar">
+            <div id="progressBar">
+                <div id="progressFill"></div>
+                <div id="progressThumb"></div>
+            </div>
+            <div id="timeDisp">0:00 / 0:00</div>
+        </div>
+    </div>
+
+    <div class="loading-screen" id="loadscr">
+        <div id="loading-icon">
+            <div id="loading-bars">
+                <div class="loading-box" style="background:#e15b64"></div>
+                <div class="loading-box" style="background:#f47e60"></div>
+                <div class="loading-box" style="background:#f8b26a"></div>
+                <div class="loading-box" style="background:#abbd81"></div>
+                <div class="loading-box" style="background:#e15b64"></div>
+                <div class="loading-box" style="background:#f47e60"></div>
+                <div class="loading-box" style="background:#f8b26a"></div>
+                <div class="loading-box" style="background:#abbd81"></div>
+            </div>
+        </div>
+    </div>
+
+<script>
+// Variabel
+const $ = id => document.getElementById(id);
+const fmt = t => `${Math.floor(t / 60)}:${Math.floor(t % 60).toString().padStart(2, '0')}`;
+
+const player = $('player');
+const ctrlBtn = $('ctrlBtn');
+const iconPlay = $('iconPlay');
+const iconPause = $('iconPause');
+const bottomBar = $('bottomBar');
+const timeDisp = $('timeDisp');
+const progressBar = $('progressBar');
+const progressFill = $('progressFill');
+const progressThumb = $('progressThumb');
+const loadscr = $('loadscr');
+
+const filename = location.pathname.split('/').pop();
+
+// Fungsi update UI
+function updateUI() {
+    if (!player.duration) return;
+    timeDisp.textContent = `${fmt(player.currentTime)} / ${fmt(player.duration)}`;
+    const percent = (player.currentTime / player.duration) * 100;
+    progressFill.style.width = percent + '%';
+    progressThumb.style.left = percent + '%';
+}
+
+// Deteksi subdomain dari URL saat ini (jika ada)
+function getBaseUrl() {
+    const currentUrl = window.location.href;
+    // Regex untuk ambil subdomain + videy.co
+    const match = currentUrl.match(/https?:\/\/([^\/]+\.)?videy\.co\//i);
+    if (match && match[1]) {
+        return `https://${match[1]}videy.co/`;
+    }
+    return null;
+}
+
+if (!/\.mp4$/i.test(filename)) {
+    loadscr.innerHTML = `<div style="text-align:center;color:#ff6b6b"><h3>Video tidak dapat dimuat</h3><p>URL harus berakhiran .mp4</p></div>`;
+    loadscr.style.display = 'flex';
+} else {
+    const base = getBaseUrl();
+    let possibleUrls = [];
+
+    if (base) {
+        // Jika ada subdomain (cdn.xxx.videy.co, video.videy.co, dll)
+        possibleUrls = [base + filename];
+    } else {
+        // Fallback jika tidak ada subdomain
+        possibleUrls = [
+            'https://cdn.videy.co/' + filename,
+            'https://cdn2.videy.co/' + filename,
+            'https://cdn3.videy.co/' + filename,
+            'https://videy.co/' + filename
+        ];
+    }
+
+    let currentIndex = 0;
+
+    function tryLoadVideo() {
+        if (currentIndex >= possibleUrls.length) {
+            loadscr.innerHTML = `<div style="text-align:center;color:#ff6b6b"><h3>Video tidak dapat dimuat</h3><p>Gagal memuat dari semua subdomain videy.co</p></div>`;
+            loadscr.style.display = 'flex';
+            return;
+        }
+
+        player.src = possibleUrls[currentIndex];
+
+        player.onerror = () => {
+            console.log('Gagal dari:', possibleUrls[currentIndex]);
+            currentIndex++;
+            tryLoadVideo();
+        };
+
+        player.oncanplay = () => {
+            loadscr.style.display = 'none';
+            ctrlBtn.classList.add('show');
+            bottomBar.classList.add('show');
+            console.log('Berhasil memuat dari:', possibleUrls[currentIndex]);
+        };
+    }
+
+    tryLoadVideo();
+}
+
+// === Play / Pause ===
+function togglePlay() {
+    if (player.paused) {
+        player.play();
+        iconPlay.style.display = 'none';
+        iconPause.style.display = 'block';
+    } else {
+        player.pause();
+        iconPlay.style.display = 'block';
+        iconPause.style.display = 'none';
+    }
+}
+
+player.addEventListener('click', togglePlay);
+ctrlBtn.addEventListener('click', togglePlay);
+
+player.ontimeupdate = updateUI;
+player.onloadedmetadata = updateUI;
+
+// Kontrol visibility
+let hideTimeout;
+function showControls() {
+    ctrlBtn.classList.add('show');
+    bottomBar.classList.add('show');
+    clearTimeout(hideTimeout);
+    if (!player.paused) {
+        hideTimeout = setTimeout(() => {
+            ctrlBtn.classList.remove('show');
+            bottomBar.classList.remove('show');
+        }, 1800);
+    }
+}
+
+player.onplay = showControls;
+player.onpause = showControls;
+
+// Seek progress
+function seek(e) {
+    if (!player.duration) return;
+    const rect = progressBar.getBoundingClientRect();
+    let pos = (e.clientX - rect.left) / rect.width;
+    pos = Math.max(0, Math.min(1, pos));
+    player.currentTime = pos * player.duration;
+}
+
+progressBar.addEventListener('click', seek);
+let isDragging = false;
+progressBar.addEventListener('mousedown', () => isDragging = true);
+window.addEventListener('mousemove', (e) => { if (isDragging) seek(e); });
+window.addEventListener('mouseup', () => isDragging = false);
+
+// Touch support
+progressBar.addEventListener('touchstart', (e) => { isDragging = true; seek(e.touches[0]); });
+window.addEventListener('touchmove', (e) => { if (isDragging) seek(e.touches[0]); });
+window.addEventListener('touchend', () => isDragging = false);
+
+// Show controls on mouse move
+document.addEventListener('mousemove', showControls);
+</script>
+</body>
+</html>
