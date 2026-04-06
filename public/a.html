@@ -335,7 +335,7 @@
                     output += `${mainLink}\n\n`;
                 }
 
-                if (showAdditionalCheck.checked) {
+                if (showAdditionalCheck.checked && titlesVisible) {
                     const add = getRandomAdditionalContent();
                     const additionalLink = formatLink(add.link);
                     output += `${add.title}\n${additionalLink}\n\n`;
