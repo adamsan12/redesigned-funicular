@@ -1665,6 +1665,24 @@ export const IMG_ERR = 'data:image/svg+xml,%3Csvg%20width=%22320%22%20height=%22
     print("✅ Frontend config generated at functions/lib/config.js")
 
 
+def generate_robots_txt(domain: str = "https://domainkamu.com"):
+    """Generate public/robots.txt with dynamic domain"""
+    robots_content = f"""User-agent: *
+Allow: /
+Allow: /detail/
+Allow: /search/
+Disallow: /api/
+Disallow: /download/
+
+Sitemap: {domain}/sitemap.xml
+"""
+    robots_path = Path("public/robots.txt")
+    robots_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(robots_path, "w", encoding="utf-8") as f:
+        f.write(robots_content)
+    print(f"✅ Robots.txt generated at public/robots.txt with domain: {domain}")
+
+
 def generate_static_list_files(videos: List[Dict], per_page: int = 100):
     output = Path("public/data")
     list_dir = output / "list"
@@ -1859,6 +1877,10 @@ async def main_fetch_async():
         print(f"✅ Saved {len(unique_cats)} unique categories to categories.json")
         
         generate_frontend_config()
+        
+        # Generate robots.txt with dynamic domain
+        domain = os.getenv('SITE_DOMAIN', 'https://domainkamu.com')
+        generate_robots_txt(domain)
         
         # Calculate execution time
         end_time = datetime.now()
