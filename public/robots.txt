@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Allow: /detail/
+Allow: /search/
+Disallow: /api/
+Disallow: /download/
+
+Sitemap: https://domainkamu.com/sitemap.xml

@@ -338,6 +338,28 @@ function buildSearchBody(rawQ, page, totalResults, res, origin, start, end) {
     const h1Text = `${totalResults} Video Kumpulan ${qEsc} yang sedang Viral di ${CONFIG.name}`;
     const foundText = `Kumpulan ${totalResults} video ${qEsc} yang sedang viral saat ini di ${CONFIG.name}. Viral Tiktok, Instagram, Twitter, Telagram VIP Terbaru Gratis `;
     
+    // Tambah konten artikel unik untuk SEO
+    const articleContent = `
+    <div class="search-article" style="margin-bottom: 2rem; padding: 1.5rem; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: var(--radius);">
+        <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; color: hsl(var(--foreground));">Temukan Video ${qEsc} Terbaru dan Terlengkap</h2>
+        <p style="color: hsl(var(--foreground)); line-height: 1.6; margin-bottom: 1rem;">
+            Pencarian Anda untuk "${qEsc}" telah menemukan ${totalResults} video viral yang sedang tren saat ini. 
+            Di ${CONFIG.name}, kami menyediakan koleksi video streaming gratis dengan kualitas HD tanpa iklan yang mengganggu. 
+            Dari video TikTok yang viral hingga konten eksklusif dari platform seperti Doodstream dan Lulustream, 
+            semua tersedia untuk ditonton kapan saja.
+        </p>
+        <p style="color: hsl(var(--foreground)); line-height: 1.6; margin-bottom: 1rem;">
+            Video ${qEsc} ini mencakup berbagai kategori mulai dari asupan viral, skandal terbaru, hingga konten hiburan premium. 
+            Setiap video telah diverifikasi untuk memastikan kualitas terbaik dan durasi yang memuaskan. 
+            Jika Anda mencari link download atau streaming cepat, ${CONFIG.name} adalah pilihan tepat untuk pengalaman nonton yang maksimal.
+        </p>
+        <p style="color: hsl(var(--foreground)); line-height: 1.6;">
+            Jelajahi lebih lanjut dengan pencarian terkait di bawah ini, atau gunakan fitur search kami untuk menemukan konten yang lebih spesifik. 
+            Nikmati hiburan tanpa batas di ${CONFIG.name}!
+        </p>
+    </div>
+    `;
+    
     // Generate related queries
     const related = getRelatedQueries(rawQ, res);
     const relatedHtml = related.length > 0 ? `
@@ -359,6 +381,8 @@ function buildSearchBody(rawQ, page, totalResults, res, origin, start, end) {
             ${h1Text}${page > 1 ? ` - Halaman ${page}` : ''}
         </h1>
         <p style="color: hsl(var(--muted-foreground)); font-size: 0.875rem; margin-bottom: 1rem;">${foundText}${page > 1 ? ` - Halaman ${page}` : ''}</p>
+        
+        ${articleContent}
         
         <div class="video-grid">
             ${res.map((v, index) => VideoCard(v, origin, start + index)).join("")}
