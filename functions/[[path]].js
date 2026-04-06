@@ -29,7 +29,7 @@ export async function onRequest(context) {
 
 
     if (p === "/" || p === "") {
-        if (url.searchParams.has('q')) return search(url, env);
+        if (url.searchParams.has('q')) return withCache(request, () => search(url, env));
         return withCache(request, () => welcome(url, env));
     }
     if (p === "/robots.txt") return withCache(request, () => robots(request));

@@ -2,6 +2,9 @@
 import { getCacheAge } from './utils.js';
 import { CONFIG } from './config.js';
 
+const memoryCache = new Map();
+const MEMORY_CACHE_TTL = 30; // seconds for same-isolate hits
+
 export async function withCache(req, fn) {
     const url = new URL(req.url);
 
@@ -27,6 +30,7 @@ export async function withCache(req, fn) {
     // Gunakan CONFIG.version sebagai global cache buster
     // Tiap kali sedot.py jalan, versi naik, dan semua cache otomatis MISS
     cacheKeyUrlObj.searchParams.set('v', CONFIG.version);
+    cacheKeyUrlObj.searchParams.sort();
     
     const cacheKeyUrl = cacheKeyUrlObj.toString();
 
@@ -45,6 +49,20 @@ export async function withCache(req, fn) {
     }
 
     // COBA AMBIL DARI CACHE DULU
+    const memoryEntry = memoryCache.get(cacheKeyUrl);
+    if (memoryEntry && Date.now() < memoryEntry.expires) {
+        const cachedRes = memoryEntry.response.clone();
+        console.log(`⚡ MEMORY CACHE HIT: ${url.pathname}`);
+        const newHeaders = new Headers(cachedRes.headers);
+        newHeaders.set("X-Cache", "MEMORY-HIT");
+        newHeaders.set("X-Cache-Age", `${Math.floor((Date.now() - memoryEntry.created) / 1000)}s`);
+        return new Response(cachedRes.body, {
+            status: cachedRes.status,
+            statusText: cachedRes.statusText,
+            headers: newHeaders
+        });
+    }
+
     if (cache) {
         try {
             const res = await cache.match(cacheKey);
@@ -54,6 +72,7 @@ export async function withCache(req, fn) {
                 const newHeaders = new Headers(res.headers);
                 newHeaders.set("X-Cache", "HIT");
                 newHeaders.set("X-Cache-Age", getCacheAge(res));
+                newHeaders.set('Vary', 'Accept');
                 return new Response(res.body, {
                     status: res.status,
                     statusText: res.statusText,
@@ -145,6 +164,17 @@ export async function withCache(req, fn) {
         } catch (e) {
             console.warn("Cache put failed, returning response without caching", e);
         }
+    }
+
+    // Simpan juga ke cache memori lokal untuk reload berulang pada isolate yang sama
+    try {
+        memoryCache.set(cacheKeyUrl, {
+            response: res.clone(),
+            created: Date.now(),
+            expires: Date.now() + MEMORY_CACHE_TTL * 1000,
+        });
+    } catch (e) {
+        console.warn("Memory cache store failed", e);
     }
 
     return res;
