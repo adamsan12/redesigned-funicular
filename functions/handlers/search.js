@@ -45,6 +45,29 @@ export async function search(url, env) {
         let target = `/f/${qSlug}`;
         if (page > 1) target += `/page/${page}`;
         return Response.redirect(origin + target, 301);
+    }
+
+    // Lanjut proses jika URL sudah bersih
+    const escapedQ_raw = rawQ.replace(/\b\w/g, c => c.toUpperCase());
+    const qShow = escapedQ_raw; // Nama cantik untuk tampilan
+
+    if (qShow.length < 2) return Response.redirect(origin + "/", 302);
+
+    const qNorm = norm(qShow);
+    const keywords = qNorm.split(/\s+/).filter(w => w.length > 0);
+
+    if (keywords.length === 0) return Response.redirect(origin + "/", 302);
+
+    const prefixes = [...new Set(keywords.slice(0, 5).map((k) => p2(k)))];
+    const dataPromises = prefixes.map(async (prefix) => {
+        let d = await get(url, env, `/data/index/${prefix}.json`);
+        if (!d) {
+            const k = keywords.find((kw) => p2(kw) === prefix);
+            if (k) {
+                const prefix3 = p3(k);
+                d = await get(url, env, `/data/index/${prefix}/${prefix3}.json`);
+            }
+        }
         return d || [];
     });
 
