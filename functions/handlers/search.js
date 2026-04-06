@@ -45,29 +45,6 @@ export async function search(url, env) {
         let target = `/f/${qSlug}`;
         if (page > 1) target += `/page/${page}`;
         return Response.redirect(origin + target, 301);
-    }
-
-    // Lanjut proses jika URL sudah bersih
-    const escapedQ_raw = rawQ.replace(/\b\w/g, c => c.toUpperCase());
-    const qShow = escapedQ_raw; // Nama cantik untuk tampilan
-
-    if (qShow.length < 2) return Response.redirect(origin + "/", 302);
-
-    const qNorm = norm(qShow);
-    const keywords = qNorm.split(/\s+/).filter(w => w.length > 0);
-
-    if (keywords.length === 0) return Response.redirect(origin + "/", 302);
-
-    const prefixes = [...new Set(keywords.slice(0, 5).map((k) => p2(k)))];
-    const dataPromises = prefixes.map(async (prefix) => {
-        let d = await get(url, env, `/data/index/${prefix}.json`);
-        if (!d) {
-            const k = keywords.find((kw) => p2(kw) === prefix);
-            if (k) {
-                const prefix3 = p3(k);
-                d = await get(url, env, `/data/index/${prefix}/${prefix3}.json`);
-            }
-        }
         return d || [];
     });
 
@@ -359,30 +336,6 @@ function buildSearchBody(rawQ, page, totalResults, res, origin, start, end) {
         </p>
     </div>
     `;
-    
-    // Generate related queries
-    const related = getRelatedQueries(rawQ, res);
-    const relatedHtml = related.length > 0 ? `
-    <div class="related-searches" style="margin-top: 2.5rem; padding: 1.5rem; background: hsl(var(--muted)/0.3); border-radius: 0.75rem; border: 1px solid hsl(var(--border));">
-        <h2 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21 21-4.3-4.3"/><circle cx="10" cy="10" r="7"/><path d="M7 10h6"/></svg>
-            Pencarian Terkait:
-        </h2>
-        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
-            ${related.map(r => `<a href="/f/${norm(r).replace(/\s+/g, '-')}" class="tag-link" style="padding: 0.4rem 0.8rem; background: hsl(var(--background)); border: 1px solid hsl(var(--border)); border-radius: 2rem; font-size: 0.875rem; color: hsl(var(--foreground)); text-decoration: none; transition: all 0.2s;" onmouseover="this.style.borderColor='hsl(var(--primary))'; this.style.color='hsl(var(--primary))'" onmouseout="this.style.borderColor='hsl(var(--border))'; this.style.color='hsl(var(--foreground))'">${h(r)}</a>`).join("")}
-        </div>
-    </div>
-    ` : '';
-
-    return `
-    <section>
-        <h1 class="section-title" itemprop="name">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            ${h1Text}${page > 1 ? ` - Halaman ${page}` : ''}
-        </h1>
-        <p style="color: hsl(var(--muted-foreground)); font-size: 0.875rem; margin-bottom: 1rem;">${foundText}${page > 1 ? ` - Halaman ${page}` : ''}</p>
-        
-        ${articleContent}
     
     // Generate related queries
     const related = getRelatedQueries(rawQ, res);
