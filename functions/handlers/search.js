@@ -362,6 +362,10 @@ function buildSearchBody(rawQ, page, totalResults, res, origin, start, end) {
     
     // Generate related queries
     const related = getRelatedQueries(rawQ, res);
+    const relatedTags = related.map(r => {
+        const tagSlug = norm(r).replace(/\s+/g, '-');
+        return `<a href="/f/${tagSlug}" class="tag-link" style="padding: 0.4rem 0.8rem; background: hsl(var(--background)); border: 1px solid hsl(var(--border)); border-radius: 2rem; font-size: 0.875rem; color: hsl(var(--foreground)); text-decoration: none; transition: all 0.2s;" onmouseover="this.style.borderColor='hsl(var(--primary))'; this.style.color='hsl(var(--primary))'" onmouseout="this.style.borderColor='hsl(var(--border))'; this.style.color='hsl(var(--foreground))'">${h(r)}</a>`;
+    }).join("");
     const relatedHtml = related.length > 0 ? `
     <div class="related-searches" style="margin-top: 2.5rem; padding: 1.5rem; background: hsl(var(--muted)/0.3); border-radius: 0.75rem; border: 1px solid hsl(var(--border));">
         <h2 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
@@ -369,7 +373,7 @@ function buildSearchBody(rawQ, page, totalResults, res, origin, start, end) {
             Pencarian Terkait:
         </h2>
         <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
-            ${related.map(r => `<a href="/f/${norm(r).replace(/\s+/g, '-')}" class="tag-link" style="padding: 0.4rem 0.8rem; background: hsl(var(--background)); border: 1px solid hsl(var(--border)); border-radius: 2rem; font-size: 0.875rem; color: hsl(var(--foreground)); text-decoration: none; transition: all 0.2s;" onmouseover="this.style.borderColor='hsl(var(--primary))'; this.style.color='hsl(var(--primary))'" onmouseout="this.style.borderColor='hsl(var(--border))'; this.style.color='hsl(var(--foreground))'">${h(r)}</a>`).join("")}
+            ${relatedTags}
         </div>
     </div>
     ` : '';
