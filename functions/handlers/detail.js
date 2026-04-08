@@ -1,21 +1,89 @@
 import { get } from "../lib/fetch.js";
-import { h, norm, generateSrcset, formatNumber, wpImg, formatDuration } from "../lib/utils.js";
+import { h, norm, generateSrcset, formatNumber, wpImg, formatDuration, videoPath } from "../lib/utils.js";
 import { render } from "../lib/render.js";
 import { CONFIG, DESCRIPTIONS, TITLES, desc, IMG_ERR } from "../lib/config.js";
 import { Breadcrumbs } from "../templates/components/breadcrumbs.js";
 import { notFound } from "./notfound.js";
+
+async function resolveIdBySlug(url, env, slug) {
+  const prefix = slug.charAt(0).toLowerCase();
+  const cacheKey = new Request(`/cache-internal/slug_lookup_${prefix}`, url);
+
+  // Try cache first
+  if (typeof caches !== 'undefined' && caches.default) {
+    try {
+      const cached = await caches.default.match(cacheKey);
+      if (cached) {
+        const data = await cached.json();
+        return data[slug] || null;
+      }
+    } catch (e) {
+      // Cache miss or error, continue to fetch
+    }
+  }
+
+  // Fetch sharded file
+  const data = await get(url, env, `/data/slug_lookup/${prefix}.json`);
+  if (!data || typeof data !== "object") return null;
+
+  // Cache the result
+  if (typeof caches !== 'undefined' && caches.default) {
+    try {
+      const res = new Response(JSON.stringify(data), {
+        headers: {
+          "Cache-Control": "public, max-age=3600, s-maxage=3600, stale-while-revalidate=3600"
+        }
+      });
+      await caches.default.put(cacheKey, res);
+    } catch (e) {
+      // Cache write failed, continue
+    }
+  }
+
+  return data[slug] || null;
+}
+
+async function fetchSlugDetail(url, env, slug) {
+  const firstWord = slug.split('-')[0] || slug.substring(0, 3);
+  return await get(url, env, `/data/slug/${firstWord}/${slug}.json`);
+}
+
 export async function detail(url, env) {
   const origin = url.origin;
-  const id = url.pathname.split("/")[2];
+  const pathKey = url.pathname.split("/")[2];
+  if (!pathKey) return notFound(url, env);
+
   const lookup = await get(url, env, "/data/lookup_shard.json");
-  if (!lookup || !lookup[id]) return notFound(url, env);
+  if (!lookup) return notFound(url, env);
+
+  let id = pathKey;
+  let usedSlug = false;
+  let slugDetail = null;
+
+  if (!lookup[id]) {
+    const resolvedId = await resolveIdBySlug(url, env, pathKey);
+    if (!resolvedId) return notFound(url, env);
+    id = resolvedId;
+    usedSlug = true;
+    slugDetail = await fetchSlugDetail(url, env, pathKey);
+  }
 
   const shardKey = lookup[id];
-  const data = await get(url, env, `/data/detail/${shardKey}.json`);
-  if (!data) return notFound(url, env);
+  let v = null;
 
-  const v = data.find((x) => x.f === id);
-  if (!v) return notFound(url, env);
+  if (slugDetail && slugDetail.f === id) {
+    v = slugDetail;
+  } else {
+    const data = await get(url, env, `/data/detail/${shardKey}.json`);
+    if (!data) return notFound(url, env);
+    v = data.find((x) => x.f === id);
+    if (!v) return notFound(url, env);
+  }
+
+  const canonicalPath = videoPath(v);
+  if (!usedSlug && v.seo_url && pathKey !== v.seo_url) {
+    return Response.redirect(`${origin}${canonicalPath}`, 301);
+  }
 
   const titleWords = norm(v.t)
     .split(" ")
@@ -164,7 +232,7 @@ export async function detail(url, env) {
       v.ds ||
       desc(DESCRIPTIONS.detailMeta, { title: v.t_esc || h(v.t), name: CONFIG.name }),
     image: wpImg(v.sp || v.si, 300),
-    canonical: `${origin}/e/${v.f}`,
+    canonical: `${origin}${canonicalPath}`,
     type: "article",
     robots: "index, follow",
     keywords: v.tags
@@ -322,14 +390,8 @@ function buildSchema(origin, url, v, related, ids) {
       itemListElement: related.map((rv, index) => ({
         "@type": "ListItem",
         position: index + 1,
-        url: `${origin}/e/${rv.f}`,
-        name: rv.t,
-        image: {
-          "@type": "ImageObject",
-          "url": wpImg(rv.si || rv.sp, 300),
-          "width": 300,
-          "height": 200
-        },
+        url: `${origin}${videoPath(rv)}`,
+        name: rv.t_esc || rv.t || rv.title || `Video ${index + 1}`,
       })),
     });
   }
@@ -438,8 +500,8 @@ function VideoCard(v, origin, i) {
     return `
     <article class="video-card" itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
         <meta itemprop="position" content="${position}">
-        <meta itemprop="url" content="${origin}/e/${filecode}">
-        <a href="/e/${filecode}" class="video-card-link" title="${titleEsc}" aria-label="Tonton video: ${titleEsc}" style="display: block; text-decoration: none; color: inherit;">
+        <meta itemprop="url" content="${origin}${videoPath(v)}">
+        <a href="${videoPath(v)}" class="video-card-link" title="${titleEsc}" aria-label="Tonton video: ${titleEsc}" style="display: block; text-decoration: none; color: inherit;">
             <div class="card-thumb">
                 <img
                     itemprop="image"
