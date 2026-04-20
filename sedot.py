@@ -1280,11 +1280,14 @@ def generate_static_indexes_sharded(videos: List[Dict], per_page: int):
     output = Path("public/data")
     index_dir = output / "index"
     detail_dir = output / "detail"
+    slug_dir = output / "slug"  # Changed from slug_detail_dir
 
     index_dir.mkdir(exist_ok=True)
     detail_dir.mkdir(exist_ok=True)
+    slug_dir.mkdir(parents=True, exist_ok=True)
 
     normalizer = DataNormalizer()
+    slug_file_status = {}
     
     # ============================================================
     # PRE-BUILD INDEX FOR RELATED VIDEOS (FAST SEARCH)
@@ -1458,6 +1461,37 @@ def generate_static_indexes_sharded(videos: List[Dict], per_page: int):
         
         batch_shards.setdefault(shard_key, []).append(detail)
 
+        # Write slug-based detail file with sharding by first word
+        first_word = seo_url.split('-')[0] if '-' in seo_url else seo_url[:3]  # Fallback if no dash
+        slug_folder = slug_dir / first_word
+        slug_folder.mkdir(exist_ok=True)
+        
+        slug_filename = f"{seo_url}.json"
+        if seo_url in slug_file_status:
+            current = slug_file_status[seo_url]
+            if current["vid"] != vid:
+                # Ambiguous slug mapping to different videos
+                if not current["ambiguous"]:
+                    old_path = current["path"]
+                    new_old_name = f"{seo_url}-{current['vid']}.json"
+                    new_old_path = current["folder"] / new_old_name
+                    if old_path.exists():
+                        old_path.replace(new_old_path)
+                    current["path"] = new_old_path
+                    current["ambiguous"] = True
+                slug_filename = f"{seo_url}-{vid}.json"
+        else:
+            slug_file_status[seo_url] = {
+                "vid": vid,
+                "folder": slug_folder,
+                "path": slug_folder / slug_filename,
+                "ambiguous": False,
+            }
+
+        slug_path = slug_folder / slug_filename
+        with open(slug_path, "w", encoding="utf-8") as sf:
+            json.dump(detail, sf, ensure_ascii=False, separators=(",", ":"))
+
         # ===== PREFIX-2 INDEX =====
         p2 = get_prefix2(norm_title)
         prefix2_map.setdefault(p2, []).append({
@@ -1525,6 +1559,38 @@ def generate_static_indexes_sharded(videos: List[Dict], per_page: int):
     print(f"✅ Lookup shard mapping generated: {len(lookup_shard)} entries")
 
     # =========================
+    # GENERATE SLUG LOOKUP (SHARDED)
+    # =========================
+    slug_lookup_shards = {}
+    duplicate_slugs = {}
+    for video in videos:
+        vid = video.get("filecode") or video.get("file_code") or video.get("f")
+        slug = video.get("seo_url") or video.get("seoUrl")
+        if not vid or not slug:
+            continue
+        prefix = slug[0].lower() if slug else 'z'  # fallback to 'z' if empty
+        if prefix not in slug_lookup_shards:
+            slug_lookup_shards[prefix] = {}
+        if slug in slug_lookup_shards[prefix] and slug_lookup_shards[prefix][slug] != vid:
+            duplicate_slugs.setdefault(slug, set()).update({slug_lookup_shards[prefix][slug], vid})
+        slug_lookup_shards[prefix][slug] = vid
+
+    # Write sharded files
+    slug_lookup_dir = output / "slug_lookup"
+    slug_lookup_dir.mkdir(exist_ok=True)
+    for prefix, shard_data in slug_lookup_shards.items():
+        shard_file = slug_lookup_dir / f"{prefix}.json"
+        with open(shard_file, "w", encoding="utf-8") as sf:
+            json.dump(shard_data, sf, ensure_ascii=False, separators=(",", ":"))
+
+    if duplicate_slugs:
+        for slug, ids in duplicate_slugs.items():
+            print(f"⚠️ Duplicate slug found in slug_lookup: {slug} -> {sorted(ids)}")
+        print(f"⚠️ Generated sharded slug_lookup with {len(duplicate_slugs)} ambiguous slug(s).")
+    else:
+        print(f"✅ Sharded slug lookup mapping generated: {sum(len(shard) for shard in slug_lookup_shards.values())} entries across {len(slug_lookup_shards)} shards")
+
+    # =========================
     # META
     # =========================
     meta = {
@@ -1535,7 +1601,10 @@ def generate_static_indexes_sharded(videos: List[Dict], per_page: int):
         "detail_shard": "md5_hex[:2] (00-ff)",
         "batch_sharding": True,
         "max_files": 256,
-        "lookup_shard_available": True
+        "lookup_shard_available": True,
+        "slug_lookup_available": False,
+        "slug_lookup_sharded": True,
+        "slug_detail_sharded": True
     }
 
     with open(output / "meta.json", "w", encoding="utf-8") as mf:

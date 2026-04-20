@@ -1,6 +1,6 @@
 import { get } from "../lib/fetch.js";
 import { render } from "../lib/render.js";
-import { h, norm, wpImg, generateSrcset, formatDuration } from "../lib/utils.js";
+import { h, norm, wpImg, generateSrcset, formatDuration, videoPath } from "../lib/utils.js";
 import { CONFIG, DESCRIPTIONS, TITLES, desc, IMG_ERR } from "../lib/config.js";
 import { notFound } from "./notfound.js";
 import { Pagination } from "../templates/components/pagination.js";
@@ -94,7 +94,7 @@ function buildListSchema(
         itemListElement: files.map((v, index) => ({
           "@type": "ListItem",
           position: index + 1,
-          url: `${origin}/e/${v.file_code}`,
+          url: `${origin}${videoPath(v)}`,
           name: v.title,
           image: {
             "@type": "ImageObject",
@@ -144,8 +144,8 @@ function VideoCard(v, origin, i) {
     return `
      <article class="video-card" itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
         <meta itemprop="position" content="${position}">
-        <meta itemprop="url" content="${origin}/e/${filecode}">
-        <a href="/e/${filecode}" class="video-card-link" title="${titleEsc}" aria-label="Tonton video: ${titleEsc}" style="display: block; text-decoration: none; color: inherit;">
+        <meta itemprop="url" content="${origin}${videoPath(v)}">
+        <a href="${videoPath(v)}" class="video-card-link" title="${titleEsc}" aria-label="Tonton video: ${titleEsc}" style="display: block; text-decoration: none; color: inherit;">
             <div class="card-thumb">
                 <img
                     itemprop="image"

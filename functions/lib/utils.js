@@ -16,6 +16,18 @@ export const p3 = (t) => {
     return !n ? "___" : n.length === 1 ? n + "__" : n.length === 2 ? n + "_" : n.slice(0, 3);
 };
 
+export function videoPath(v) {
+    if (!v) return "/e/";
+    const slug = v.seo_url || v.seoUrl;
+    if (slug) return `/e/${encodeURIComponent(slug)}`;
+    const filecode = v.f || v.file_code || v.filecode;
+    return filecode ? `/e/${encodeURIComponent(filecode)}` : "/e/";
+}
+
+export function videoUrl(origin, v) {
+    return origin + videoPath(v);
+}
+
 export function getCacheAge(response) {
     const date = response.headers.get('date');
     if (!date) return 'unknown';

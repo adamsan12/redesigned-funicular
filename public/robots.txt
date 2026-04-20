@@ -5,4 +5,4 @@ Allow: /search/
 Disallow: /api/
 Disallow: /download/
 
-Sitemap: https://example.com/sitemap.xml
+Sitemap: https://domainkamu.com/sitemap.xml

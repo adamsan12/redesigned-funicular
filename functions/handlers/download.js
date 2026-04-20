@@ -1,5 +1,5 @@
 import { get } from "../lib/fetch.js";
-import { h, norm, wpImg, generateSrcset, formatDuration } from "../lib/utils.js";
+import { h, norm, wpImg, generateSrcset, formatDuration, videoPath } from "../lib/utils.js";
 import { render } from "../lib/render.js";
 import { CONFIG, DESCRIPTIONS, TITLES, desc, IMG_ERR } from "../lib/config.js";
 import { notFound } from "./notfound.js";
@@ -97,7 +97,7 @@ function buildDownloadBody(v, relatedHtml, origin) {
 <div data-cl-spot="2064816"></div> </center>
             <div class="btn-group" style="justify-content: center; gap: 1rem;">
                 <button id="downloadBtn" class="btn btn-primary" onclick="startDownload()" style="padding: 0.6rem 1.2rem; font-size: 1rem;"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download Video</button>
-                <a href="/e/${v.f}" class="btn btn-outline"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Kembali ke Detail</a>
+                <a href="${videoPath(v)}" class="btn btn-outline"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Kembali ke Detail</a>
             </div>
             <center> <script async data-cfasync="false" data-clbaid="" src="//bartererfaxtingling.com/bn.js"></script>
 <div data-cl-spot="2064816"></div> </center>
@@ -160,8 +160,8 @@ function VideoCard(v, origin, i) {
     return `
     <article class="video-card" itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
         <meta itemprop="position" content="${position}">
-        <meta itemprop="url" content="${origin}/e/${filecode}">
-        <a href="/e/${filecode}" class="video-card-link" title="${titleEsc}" aria-label="Tonton video: ${titleEsc}" style="display: block; text-decoration: none; color: inherit;">
+        <meta itemprop="url" content="${origin}${videoPath(v)}">
+        <a href="${videoPath(v)}" class="video-card-link" title="${titleEsc}" aria-label="Tonton video: ${titleEsc}" style="display: block; text-decoration: none; color: inherit;">
             <div class="card-thumb">
                 <img
                     itemprop="image"

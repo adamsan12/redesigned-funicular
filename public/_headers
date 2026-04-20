@@ -1,0 +1,79 @@
+# Cloudflare Pages Headers Configuration
+# Cache Strategy untuk Minimize Request & Optimize Delivery
+
+# Images - Cache 1 year (immutable)
+/images/*
+  Cache-Control: public, max-age=31536000, immutable, s-maxage=31536000
+  X-Content-Type-Options: nosniff
+
+# Fonts - Cache 1 year
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable, s-maxage=31536000
+  Access-Control-Allow-Origin: *
+
+/*.woff2
+  Cache-Control: public, max-age=31536000, immutable, s-maxage=31536000
+  Access-Control-Allow-Origin: *
+
+# CSS Files - Cache 30 days
+*.css
+  Cache-Control: public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=604800
+  X-Content-Type-Options: nosniff
+
+# JavaScript Files - Cache 30 days
+*.js
+  Cache-Control: public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=604800
+  X-Content-Type-Options: nosniff
+
+# Service Worker - Cache 1 hour (needs frequent updates)
+/sw.js
+  Cache-Control: public, max-age=3600, s-maxage=3600, must-revalidate
+  Service-Worker-Allowed: /
+
+# JSON Data Files - Cache aggressively
+/data/*
+  Cache-Control: public, max-age=604800, s-maxage=604800, stale-while-revalidate=86400, stale-if-error=86400
+  Content-Type: application/json
+
+/data/meta.json
+  Cache-Control: public, max-age=86400, s-maxage=86400, stale-while-revalidate=86400, stale-if-error=86400
+  Content-Type: application/json
+
+/data/lookup_shard.json
+  Cache-Control: public, max-age=604800, s-maxage=604800, stale-while-revalidate=86400, stale-if-error=604800
+  Content-Type: application/json
+
+# Static HTML pages - Cache but allow revalidation
+*.html
+  Cache-Control: public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400
+  X-Content-Type-Options: nosniff
+
+# Robots & Sitemap - Cache per route rules
+/robots.txt
+  Cache-Control: public, max-age=604800, s-maxage=604800, stale-while-revalidate=86400
+  Content-Type: text/plain
+
+/sitemap.xml
+  Cache-Control: public, max-age=86400, s-maxage=86400, stale-while-revalidate=86400
+  Content-Type: application/xml
+
+# Sitemaps - Cache aggressively
+/*-sitemap*.xml
+  Cache-Control: public, max-age=86400, s-maxage=86400, stale-while-revalidate=172800
+  Content-Type: application/xml
+
+# CSV/Text exports
+*.csv
+*.txt
+  Cache-Control: public, max-age=604800, s-maxage=604800, stale-while-revalidate=86400
+  X-Content-Type-Options: nosniff
+
+# Default for everything else
+/*
+  Cache-Control: public, max-age=3600, s-maxage=7200, stale-while-revalidate=86400
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-XSS-Protection: 1; mode=block
+  Permissions-Policy: accelerometer=(), camera=(), microphone=(), geolocation=()
+  Vary: Accept-Encoding, Accept

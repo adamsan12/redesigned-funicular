@@ -227,10 +227,7 @@ export async function detail(url, env) {
   const fullBody = body + randomRelatedHtml;
 
   const meta = {
-    description:
-      v.ds_esc ||
-      v.ds ||
-      desc(DESCRIPTIONS.detailMeta, { title: v.t_esc || h(v.t), name: CONFIG.name }),
+    description: desc(DESCRIPTIONS.detailMeta, { title: v.t_esc || h(v.t), name: CONFIG.name }),
     image: wpImg(v.sp || v.si, 300),
     canonical: `${origin}${canonicalPath}`,
     type: "article",
@@ -270,10 +267,7 @@ function buildSchema(origin, url, v, related, ids) {
         url: webpageId,
         name: v.t_esc || h(v.t),
         isPartOf: { "@id": websiteId },
-        description:
-          v.ds_esc ||
-          v.ds ||
-          desc(DESCRIPTIONS.detailMeta, { title: v.t_esc || h(v.t), name: CONFIG.name }),
+        description: desc(DESCRIPTIONS.detailMeta, { title: v.t_esc || h(v.t), name: CONFIG.name }),
         primaryImageOfPage: {
           "@type": "ImageObject",
           url: wpImg(v.sp || v.si, 1280),
@@ -289,10 +283,7 @@ function buildSchema(origin, url, v, related, ids) {
         "@type": "VideoObject",
         "@id": videoId,
         name: v.t_esc || h(v.t),
-        description:
-          v.ds_esc ||
-          v.ds ||
-          desc(DESCRIPTIONS.detailMeta, { title: v.t_esc || h(v.t), name: CONFIG.name }),
+        description: desc(DESCRIPTIONS.detailMeta, { title: v.t_esc || h(v.t), name: CONFIG.name }),
         thumbnailUrl: [wpImg(v.sp || v.si, 1280)],
         uploadDate: uploadDate,
         duration: durationISO,
@@ -329,10 +320,7 @@ function buildSchema(origin, url, v, related, ids) {
         "@type": "Article",
         "@id": articleId,
         headline: v.t_esc || h(v.t),
-        description:
-          v.ds_esc ||
-          v.ds ||
-          desc(DESCRIPTIONS.detailMeta, { title: v.t_esc || h(v.t), name: CONFIG.name }),
+        description: desc(DESCRIPTIONS.detailMeta, { title: v.t_esc || h(v.t), name: CONFIG.name }),
         image: {
           "@type": "ImageObject",
           url: wpImg(v.sp || v.si, 1280),
@@ -446,7 +434,7 @@ function buildDetailBody(
                 <center> <script async data-cfasync="false" data-clbaid="" src="//bartererfaxtingling.com/bn.js"></script>
                 <div data-cl-spot="2064816"></div> </center>
                 <div class="read-more-content" id="readMoreWrapper">
-                    <p><strong>${CONFIG.name}</strong> - ${v.ds_esc || `Streaming video viral terbaru ${v.t_esc}. Video ini menyajikan konten menarik yang wajib Anda saksikan hingga akhir.`}</p>
+                    <p><strong>${CONFIG.name}</strong> - ${v.ds_esc || desc(DESCRIPTIONS.detailMeta, { title: v.t_esc, name: CONFIG.name })}</p>
                     <p>${v.tg ? v.tg.map((t) => `<a href="/f/${norm(t).replace(/\s+/g, '-')}" class="tag-link">#${t.replace(/\s+/g, "") || 'Video'}</a>`).join(" ") : ``}</p>
                     <div class="read-more-overlay"></div>
                 </div>

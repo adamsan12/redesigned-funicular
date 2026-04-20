@@ -3,7 +3,6 @@ import { Header } from '../components/header.js';
 import { Footer } from '../components/footer.js';
 import { MobileMenu } from '../components/mobile-menu.js';
 import { SearchModal } from '../components/search-modal.js';
-import { Styles } from '../components/styles.js';
 
 export function BaseLayout(t, b, schema, url, meta = {}) {
     const canonical = meta.canonical || url.href;
@@ -12,14 +11,43 @@ export function BaseLayout(t, b, schema, url, meta = {}) {
     const keywords = meta.keywords || "video viral, streaming video, video lucu, hiburan, konten viral 2024";
     const siteTitle = `${t} - ${CONFIG.name}`;
 
-    const style = Styles();
     const script = getScript();
 
     // Pagination prev/next link tags for SEO
     const paginationLinks = (meta.prevUrl ? `<link rel="prev" href="${meta.prevUrl}">` : '') +
                             (meta.nextUrl ? `<link rel="next" href="${meta.nextUrl}">` : '');
 
+    const showCategories = meta.showCategories !== false; // default true
+
     return `<!doctype html><html lang="id" class="dark"><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="theme-color" content="#0a0a0a">
+    <title>${siteTitle}</title>
+    <meta name="description" content="${description}">
+    <meta name="keywords" content="${keywords}">
+    <meta name="robots" content="${meta.robots || "index, follow"}">
+    <link rel="canonical" href="${canonical}">
+    ${paginationLinks}
+    <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    
+    <meta property="og:locale" content="id_ID">
+    <meta property="og:site_name" content="${CONFIG.name}">
+    <meta property="og:title" content="${siteTitle}">
+    <meta property="og:description" content="${description}">
+    <meta property="og:url" content="${canonical}">
+    <meta property="og:image" content="${image}">
+    <meta property="og:image:width" content="1280">
+    <meta property="og:image:height" content="720">
+    <meta property="og:type" content="${meta.type || "website"}">
+    
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="${siteTitle}">
+    <meta name="twitter:description" content="${description}">
+    <meta name="twitter:image" content="${image}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="theme-color" content="#0a0a0a">
@@ -79,16 +107,16 @@ export function BaseLayout(t, b, schema, url, meta = {}) {
     <link rel="preconnect" href="https://i0.wp.com" crossorigin>
     <link rel="dns-prefetch" href="https://i0.wp.com">
 
-    <style>${style}</style>
+    <link rel="stylesheet" href="/css/main.css">
     </head><body>
     <a href="#mainContent" class="skip-nav" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:9999;padding:8px 16px;background:hsl(var(--primary));color:#fff;text-decoration:none;&:focus{position:fixed;left:16px;top:16px;width:auto;height:auto;overflow:visible;}">Langsung ke Konten</a>
     ${MobileMenu()}
-    ${Header(url.origin)}
+    ${meta.header || Header(url.origin, showCategories)}
  
     <main class="container" role="main" id="mainContent">${b}</main>
 
     ${SearchModal()}
-    ${Footer()}
+    ${meta.footer || Footer(showCategories)}
 
     <button id="backToTop" class="back-to-top" aria-label="Kembali ke atas">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>

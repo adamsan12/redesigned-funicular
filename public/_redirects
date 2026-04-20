@@ -1,0 +1,15 @@
+# Cloudflare Pages Redirects
+# Using edge redirects instead of worker handlers to save requests
+# These redirects are processed at the edge BEFORE reaching the worker
+
+# 1. Legacy /page/ format to /list/
+/page /list/ 301
+/page/1 /list/ 301
+/page/:page /list/:page 301
+
+# 2. Trailing slash normalization for key pages
+/list /list/ 301
+
+# 3. Security headers and caching applied automatically via _headers
+
+# All other requests fall through to the worker (functions/[[path]].js)

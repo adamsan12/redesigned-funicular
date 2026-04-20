@@ -1,5 +1,14 @@
 // functions/handlers/sitemap.js
 import { get } from "../lib/fetch.js";
+import { videoPath } from "../lib/utils.js";
+
+// Helper untuk minify XML
+function minifyXml(xml) {
+  return xml
+    .replace(/>\s+</g, '><')
+    .replace(/^\s+|\s+$/g, '')
+    .replace(/\n/g, '');
+}
 
 export async function sitemap(url, env) {
   const lookup = await get(url, env, "/data/lookup_shard.json");
@@ -23,8 +32,14 @@ export async function sitemap(url, env) {
   // Category Sitemap
   out += `<sitemap><loc>${url.origin}/category-sitemap.xml</loc></sitemap>`;
   
-  return new Response(out + "</sitemapindex>", {
-    headers: { "content-type": "application/xml" },
+  out += "</sitemapindex>";
+
+  return new Response(minifyXml(out), {
+    headers: { 
+      "content-type": "application/xml; charset=utf-8",
+      "cache-control": "public, max-age=604800, s-maxage=604800, stale-while-revalidate=172800, stale-if-error=604800",
+      "vary": "Accept-Encoding"
+    },
   });
 }
 
@@ -43,8 +58,8 @@ export async function postSitemap(url, env, path) {
   const requiredShards = [...new Set(slice.map(id => lookup[id]))];
   const videoMap = {};
 
-  // Fetch meta data in chunks
-  const chunkSize = 20;
+  // Fetch meta data dalam chunks lebih besar untuk efisiensi
+  const chunkSize = 50;
   for (let i = 0; i < requiredShards.length; i += chunkSize) {
     const chunk = requiredShards.slice(i, i + chunkSize);
     await Promise.all(chunk.map(async (shard) => {
@@ -61,21 +76,26 @@ export async function postSitemap(url, env, path) {
   let out = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">`;
   for (const id of slice) {
     const v = videoMap[id];
+    const locPath = v ? videoPath(v) : `/e/${id}`;
     const isoDate = v && v.up ? v.up.replace(" ", "T") + "+00:00" : new Date().toISOString().split(".")[0] + "+00:00";
     const thumb = v ? (v.sp || v.si || "") : "";
     const title = v ? (v.t_esc || v.t || "Video Viral") : "Video Viral";
     
-    out += `\n<url>\n<loc>${url.origin}/e/${id}</loc>\n<lastmod>${isoDate}</lastmod>`;
+    out += `<url><loc>${url.origin}${locPath}</loc><lastmod>${isoDate}</lastmod>`;
     if (thumb) {
       const fullThumb = thumb.startsWith('http') ? thumb : url.origin + thumb;
-      out += `\n<image:image>\n<image:loc>${fullThumb}</image:loc>\n<image:title>${title}</image:title>\n</image:image>`;
+      out += `<image:image><image:loc>${fullThumb}</image:loc><image:title>${title}</image:title></image:image>`;
     }
-    out += `\n</url>`;
+    out += `</url>`;
   }
-  out += "\n</urlset>";
+  out += "</urlset>";
 
-  return new Response(out, {
-    headers: { "content-type": "application/xml" },
+  return new Response(minifyXml(out), {
+    headers: { 
+      "content-type": "application/xml; charset=utf-8",
+      "cache-control": "public, max-age=604800, s-maxage=604800, stale-while-revalidate=172800, stale-if-error=604800",
+      "vary": "Accept-Encoding"
+    },
   });
 }
 
@@ -94,8 +114,8 @@ export async function videoSitemap(url, env, path) {
   const requiredShards = [...new Set(slice.map(id => lookup[id]))];
   const videoMap = {};
 
-  // Fetch meta data in chunks
-  const chunkSize = 20;
+  // Fetch meta data dalam chunks lebih besar untuk efisiensi
+  const chunkSize = 50;
   for (let i = 0; i < requiredShards.length; i += chunkSize) {
     const chunk = requiredShards.slice(i, i + chunkSize);
     await Promise.all(chunk.map(async (shard) => {
@@ -120,23 +140,19 @@ export async function videoSitemap(url, env, path) {
     const description = (v.ds_esc || v.ds || `Nonton video ${title} terbaru full HD gratis.`).substring(0, 2048);
     const duration = v.ln || v.length || 0;
     const pubDate = v.up ? v.up.replace(" ", "T") + "+00:00" : new Date().toISOString();
+    const locPath = videoPath(v);
 
-    out += `
-<url>
-<loc>${url.origin}/e/${id}</loc>
-<video:video>
-<video:thumbnail_loc>${thumb.startsWith('http') ? thumb : url.origin + thumb}</video:thumbnail_loc>
-<video:title>${title.substring(0, 100)}</video:title>
-<video:description>${description}</video:description>
-<video:player_loc>${v.pe || url.origin + '/e/' + id}</video:player_loc>
-<video:duration>${duration}</video:duration>
-<video:publication_date>${pubDate}</video:publication_date>
-</video:video>
-</url>`;
+    out += `<url><loc>${url.origin}${locPath}</loc><video:video><video:thumbnail_loc>${thumb.startsWith('http') ? thumb : url.origin + thumb}</video:thumbnail_loc><video:title>${title.substring(0, 100)}</video:title><video:description>${description}</video:description><video:player_loc>${v.pe || url.origin + locPath}</video:player_loc><video:duration>${duration}</video:duration><video:publication_date>${pubDate}</video:publication_date></video:video></url>`;
   }
   
-  return new Response(out + "</urlset>", {
-    headers: { "content-type": "application/xml" },
+  out += "</urlset>";
+
+  return new Response(minifyXml(out), {
+    headers: { 
+      "content-type": "application/xml; charset=utf-8",
+      "cache-control": "public, max-age=604800, s-maxage=604800, stale-while-revalidate=172800, stale-if-error=604800",
+      "vary": "Accept-Encoding"
+    },
   });
 }
 
@@ -149,23 +165,31 @@ export async function categorySitemap(url, env) {
   // Base categories from categories.json
   for (const cat of categories) {
     if (cat.slug) {
-      out += `\n<url>\n<loc>${url.origin}/f/${cat.slug}</loc>\n<changefreq>weekly</changefreq>\n<priority>0.6</priority>\n</url>`;
+      out += `<url><loc>${url.origin}/f/${cat.slug}</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>`;
     }
   }
   
-  out += "\n</urlset>";
+  out += "</urlset>";
 
-  return new Response(out, {
-    headers: { "content-type": "application/xml" },
+  return new Response(minifyXml(out), {
+    headers: { 
+      "content-type": "application/xml; charset=utf-8",
+      "cache-control": "public, max-age=604800, s-maxage=604800, stale-while-revalidate=172800, stale-if-error=604800",
+      "vary": "Accept-Encoding"
+    },
   });
 }
 
 export function robots(req) {
   const url = new URL(req.url);
-  return new Response(
-    "User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: https://" +
-      url.hostname +
-      "/sitemap.xml",
-    { headers: { "content-type": "text/plain" } },
-  );
+  const content = "User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: https://" +
+    url.hostname +
+    "/sitemap.xml";
+
+  return new Response(content, {
+    headers: { 
+      "content-type": "text/plain; charset=utf-8",
+      "cache-control": "public, max-age=604800, s-maxage=604800, stale-while-revalidate=604800"
+    },
+  });
 }

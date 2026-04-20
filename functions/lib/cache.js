@@ -3,7 +3,19 @@ import { getCacheAge } from './utils.js';
 import { CONFIG } from './config.js';
 
 const memoryCache = new Map();
-const MEMORY_CACHE_TTL = 30; // seconds for same-isolate hits
+const MEMORY_CACHE_TTL = 120; // seconds for same-isolate hits (increased from 30 for better performance)
+
+// Generate simple ETag
+function generateETag(content) {
+    // Simple hash for ETag generation
+    let hash = 0;
+    for (let i = 0; i < content.length; i++) {
+        const char = content.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+    }
+    return `"${Math.abs(hash).toString(36)}"`;
+}
 
 export async function withCache(req, fn) {
     const url = new URL(req.url);
@@ -96,61 +108,86 @@ export async function withCache(req, fn) {
         headers: newHeaders
     });
 
-    // Jika response error (selain redirect), tetap cache singkat agar tidak membebani fungsi
+    // Jika response error (selain redirect), tetap cache medium untuk mengurangi load
     const isErrorResponse = !res.ok && ![301, 302].includes(res.status);
     if (isErrorResponse) {
-        newHeaders.set("Cache-Control", "public, max-age=60, s-maxage=60, stale-while-revalidate=300");
+        newHeaders.set("Cache-Control", "public, max-age=300, s-maxage=300, stale-while-revalidate=600, stale-if-error=3600");
         newHeaders.set("X-Cache-Type", "error");
         newHeaders.set("X-Cache", "MISS");
         newHeaders.set("X-Cache-Date", new Date().toISOString());
         newHeaders.set("X-Cache-Key", url.pathname);
 
         const errorRes = res.clone();
-        await cache.put(cacheKey, errorRes);
+        if (cache) await cache.put(cacheKey, errorRes);
         return res;
     }
 
     // SET CACHE HEADER berdasarkan tipe konten
     const isStatic = url.pathname.match(/\.(css|js|jpg|jpeg|png|ico|svg|woff2?|webp|mp4|gif)$/i);
+    const isSitemap = url.pathname.includes('sitemap');
+    const isRobots = url.pathname === '/robots.txt';
     const isVideoPage = url.pathname.startsWith('/e/');
+    const isDownloadPage = url.pathname.startsWith('/dl/');
     const isSearchPage = url.pathname.startsWith('/f/');
     const isListingPage = url.pathname.startsWith('/page/') || url.pathname.startsWith('/list/') || url.pathname === '/';
     const isApi = url.pathname.startsWith('/api/');
 
     if (isStatic) {
-        // Static assets: cache 1 tahun
-        newHeaders.set("Cache-Control", "public, max-age=31536000, immutable");
+        // Static assets: cache 1 tahun (immutable)
+        newHeaders.set("Cache-Control", "public, max-age=31536000, immutable, s-maxage=31536000");
         newHeaders.set("X-Cache-Type", "static");
+    } else if (isSitemap) {
+        // Sitemap: cache 7 hari (diupdate tidak sering)
+        newHeaders.set("Cache-Control", "public, max-age=604800, s-maxage=604800, stale-while-revalidate=172800, stale-if-error=604800");
+        newHeaders.set("X-Cache-Type", "sitemap");
+    } else if (isRobots) {
+        // Robots.txt: cache 7 hari
+        newHeaders.set("Cache-Control", "public, max-age=604800, s-maxage=604800, stale-while-revalidate=604800");
+        newHeaders.set("X-Cache-Type", "robots");
     } else if (isApi) {
-        // API endpoints: cache longer to reduce function invocations
-        newHeaders.set("Cache-Control", "public, max-age=86400, s-maxage=86400, stale-while-revalidate=86400");
+        // API endpoints: cache 24 jam + stale-while-revalidate untuk reduce load drastis
+        newHeaders.set("Cache-Control", "public, max-age=86400, s-maxage=86400, stale-while-revalidate=86400, stale-if-error=86400");
         newHeaders.set("X-Cache-Type", "api");
     } else if (isVideoPage) {
-        // Halaman video: cache 24 jam di browser dan edge
-        newHeaders.set("Cache-Control", "public, max-age=86400, s-maxage=86400, stale-while-revalidate=86400");
+        // Halaman video: cache 7 hari (video URL permanent, tidak akan berubah)
+        // dengan stale-while-revalidate untuk pengalaman cepat
+        newHeaders.set("Cache-Control", "public, max-age=604800, s-maxage=604800, stale-while-revalidate=86400, stale-if-error=604800");
         newHeaders.set("X-Cache-Type", "video");
+    } else if (isDownloadPage) {
+        // Download pages: cache 3 hari
+        newHeaders.set("Cache-Control", "public, max-age=259200, s-maxage=259200, stale-while-revalidate=86400");
+        newHeaders.set("X-Cache-Type", "download");
     } else if (isSearchPage) {
-        // Halaman search: cache 30 menit (karena dinamis)
-        newHeaders.set("Cache-Control", "public, max-age=1800, s-maxage=3600, stale-while-revalidate=3600");
+        // Halaman search: cache 12 jam (hasil search cenderung stabil)
+        // Gunakan stale-while-revalidate agresif untuk load lebih cepat
+        newHeaders.set("Cache-Control", "public, max-age=43200, s-maxage=43200, stale-while-revalidate=86400, stale-if-error=86400");
         newHeaders.set("X-Cache-Type", "search");
     } else if (isListingPage) {
-        // Halaman listing: cache 1 jam
-        newHeaders.set("Cache-Control", "public, max-age=3600, s-maxage=7200, stale-while-revalidate=7200");
+        // Halaman listing: cache 6 jam (diupdate regular tapi tidak sering)
+        // Gunakan stale-while-revalidate untuk performa optimal
+        newHeaders.set("Cache-Control", "public, max-age=21600, s-maxage=21600, stale-while-revalidate=86400, stale-if-error=172800");
         newHeaders.set("X-Cache-Type", "listing");
     } else {
-        // Default: cache 1 jam
-        newHeaders.set("Cache-Control", "public, max-age=3600, s-maxage=3600");
+        // Default: cache 6 jam
+        newHeaders.set("Cache-Control", "public, max-age=21600, s-maxage=21600, stale-while-revalidate=86400");
         newHeaders.set("X-Cache-Type", "default");
     }
 
-    // Tambahkan cache tags untuk purge (berguna jika pakai cache API)
+    // Tambahkan cache tags untuk purge (berguna jika pakai Cloudflare Cache API)
     const tags = [];
     if (isVideoPage) tags.push('video');
+    if (isDownloadPage) tags.push('download');
     if (isSearchPage) tags.push('search');
     if (isListingPage) tags.push('list');
+    if (isSitemap) tags.push('sitemap');
     if (tags.length) {
         newHeaders.set('Cache-Tag', tags.join(','));
     }
+
+    // Tambahkan Vary header untuk proper cache key management
+    const varyHeaders = ['Accept-Encoding'];
+    if (isSearchPage || isListingPage) varyHeaders.push('Accept-Language');
+    newHeaders.set('Vary', varyHeaders.join(', '));
 
     // Header tambahan untuk monitoring
     newHeaders.set('X-Cache', 'MISS');
@@ -178,4 +215,3 @@ export async function withCache(req, fn) {
     }
 
     return res;
-}

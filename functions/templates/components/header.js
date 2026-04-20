@@ -1,6 +1,6 @@
 import { CONFIG, CATEGORIES } from '../../lib/config.js';
 
-export function Header(origin) {
+export function Header(origin, showCategories = true) {
     const halfIndex = Math.ceil(CATEGORIES.length / 2);
     const headerCategories = CATEGORIES.slice(0, halfIndex);
     
@@ -20,13 +20,13 @@ export function Header(origin) {
                 <a href="/f/jav-sub-indo">Jav Sub Indo</a>
                  <a href="/f/bokep-indo">Bokep Indo</a>
                   <a href="/f/bokep-indo"> Bokep Indo</a>
-                <div class="dropdown">
+                ${showCategories ? `<div class="dropdown">
                     <button class="dropbtn" aria-haspopup="true" aria-expanded="false" style="background:none;border:none;color:inherit;font:inherit;cursor:pointer;padding:inherit;">Kategori</button>
                  
                     <div class="dropdown-content" role="menu">
                         ${headerCategories.map(cat => `<a href="/f/${cat.slug}" role="menuitem">${cat.name}</a>`).join('\n                        ')}
                     </div>
-                </div>
+                </div>` : ''}
                
             </nav>
 

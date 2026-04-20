@@ -6,15 +6,26 @@
 // within the same isolate lifecycle (~seconds to minutes).
 const memoryCache = new Map();
 
-// TTL configurations (in seconds)
+// TTL configurations (in seconds) - OPTIMIZED FOR MAXIMUM REDUCTION OF REQUESTS
 const CACHE_TTL = {
-    '/data/lookup_shard.json': 86400,   // 24h — rarely changes
-    '/data/meta.json': 3600,            // 1h  — changes infrequently
-    'default': 1800,                    // 30m — default for all other data
+    '/data/lookup_shard.json': 604800,        // 7 days — stable lookup table, rarely changes
+    '/data/categories.json': 604800,          // 7 days — stable categories
+    '/data/meta.json': 86400,                 // 24 hours — meta info updated less frequently
+    '/data/constants.json': 604800,           // 7 days — constants don't change
+    'default': 86400,                         // 24 hours default — data relatively stable
 };
 
 function getTTL(path) {
-    return CACHE_TTL[path] || CACHE_TTL['default'];
+    // Check exact path match first
+    if (CACHE_TTL[path]) return CACHE_TTL[path];
+    
+    // Check pattern matches
+    if (path.includes('/data/detail/')) return 604800;        // 7 days for detail pages
+    if (path.includes('/data/index/')) return 432000;         // 5 days for index files
+    if (path.includes('/data/slug')) return 604800;           // 7 days for slug data
+    if (path.includes('/data/list/')) return 86400;           // 24 hours for list pages (updated regularly)
+    
+    return CACHE_TTL['default'];
 }
 
 export async function get(url, env, path) {
@@ -73,13 +84,17 @@ export async function get(url, env, path) {
             expires: Date.now() + ttl * 1000,
         });
 
-        // Store in Cloudflare Cache API (edge cache)
+        // Store in Cloudflare Cache API (edge cache) with optimized Cache-Control
         if (cfCache) {
             try {
+                // Use more aggressive stale-while-revalidate for data files
+                const swrTtl = Math.min(ttl * 2, 604800); // stale-while-revalidate = 2x TTL or 7 days max
+                const sierraTtl = Math.min(ttl * 7, 2592000); // stale-if-error = 7x TTL or 30 days max
+                
                 const cacheResp = new Response(JSON.stringify(data), {
                     headers: {
                         'Content-Type': 'application/json',
-                        'Cache-Control': `public, max-age=${ttl}, s-maxage=${ttl}, stale-while-revalidate=${ttl}`,
+                        'Cache-Control': `public, max-age=${ttl}, s-maxage=${ttl}, stale-while-revalidate=${swrTtl}, stale-if-error=${sierraTtl}`,
                     },
                 });
                 // waitUntil is not available here, but cache.put is fire-and-forget safe

@@ -1,6 +1,6 @@
 import { get } from "../lib/fetch.js";
 import { render } from "../lib/render.js";
-import { h, wpImg, generateSrcset, formatDuration } from "../lib/utils.js";
+import { h, wpImg, generateSrcset, formatDuration, videoPath } from "../lib/utils.js";
 import { CONFIG, IMG_ERR } from "../lib/config.js";
 
 export async function notFound(url, env) {
@@ -61,7 +61,7 @@ function VideoCard(v, origin, i) {
 
     return `
     <article class="video-card">
-        <a href="/e/${filecode}" class="video-card-link" title="${titleEsc}" style="display: block; text-decoration: none; color: inherit;">
+        <a href="${videoPath(v)}" class="video-card-link" title="${titleEsc}" style="display: block; text-decoration: none; color: inherit;">
             <div class="card-thumb">
                 <img
                     src="${wpImg(thumb, 320)}"

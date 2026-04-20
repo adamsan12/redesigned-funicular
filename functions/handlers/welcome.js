@@ -59,6 +59,7 @@ export async function welcome(url, env) {
     canonical: url.origin,
     robots: "index, follow",
     type: "website",
+    showCategories: false,
   };
 
   return render(desc(TITLES.welcomePage, { name: CONFIG.name }), body, welcomeSchema, url, metaData);

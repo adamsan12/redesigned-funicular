@@ -1,5 +1,5 @@
 import { get } from '../lib/fetch.js';
-import { h, norm, p2, p3, wpImg, generateSrcset, formatDuration } from '../lib/utils.js';
+import { h, norm, p2, p3, wpImg, generateSrcset, formatDuration, videoPath } from '../lib/utils.js';
 import { render } from '../lib/render.js';
 import { CONFIG, DESCRIPTIONS, TITLES, desc, IMG_ERR } from '../lib/config.js';
 import { Pagination } from '../templates/components/pagination.js';
@@ -412,9 +412,9 @@ function VideoCard(v, origin, i) {
 
     return `
     <article class="video-card" itemscope itemtype="https://schema.org/Article">
-        <meta itemprop="url" content="${origin}/e/${filecode}">
+        <meta itemprop="url" content="${origin}${videoPath(v)}">
         <meta itemprop="image" content="${wpImg(thumb, 960)}">
-        <a href="/e/${filecode}" class="video-card-link" title="${titleEsc}" aria-label="Tonton video: ${titleEsc}" style="display: block; text-decoration: none; color: inherit;" itemprop="url">
+        <a href="${videoPath(v)}" class="video-card-link" title="${titleEsc}" aria-label="Tonton video: ${titleEsc}" style="display: block; text-decoration: none; color: inherit;" itemprop="url">
             <div class="card-thumb">
                 <img
                     src="${wpImg(thumb, 320)}"

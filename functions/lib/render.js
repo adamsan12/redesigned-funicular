@@ -54,7 +54,19 @@ function minifyHTML(html) {
 
 export function render(t, b, schema, url, meta = {}) {
     const html = minifyHTML(BaseLayout(t, b, schema, url, meta));
+    
     return new Response(html, {
-        headers: { "content-type": "text/html; charset=utf-8" }
+        headers: {
+            "content-type": "text/html; charset=utf-8",
+            "content-encoding": "gzip",
+            "x-content-type-options": "nosniff",
+            "x-frame-options": "SAMEORIGIN",
+            "x-xss-protection": "1; mode=block",
+            "referrer-policy": "strict-origin-when-cross-origin",
+            "permissions-policy": "accelerometer=(), camera=(), microphone=(), geolocation=()",
+            "vary": "Accept-Encoding, Accept-Language",
+            // Compression hints
+            "transfer-encoding": "chunked"
+        }
     });
 }
