@@ -1,12 +1,8 @@
 name = "video-site"
 
-main = "worker.js"
-
 compatibility_date = "2024-01-01"
 
+# Cloudflare Pages configuration
+pages_build_output_dir = "public"
 
-
-[site]
-
-bucket = "./public"
-
+# Functions will be auto-detected from ./functions directory
